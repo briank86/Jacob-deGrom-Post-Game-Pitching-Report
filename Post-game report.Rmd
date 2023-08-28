@@ -1,0 +1,1397 @@
+---
+title: "Jacob deGrom 9/18/22 Post-game Report"
+output: 
+  pdf_document:
+    toc: true
+    
+
+---
+\newpage
+
+# Previous Game Report
+Summary
+---
+```{r, echo=FALSE, warning=FALSE, fig.height = 6.3, fig.width=7.5, message=FALSE}
+library(ggplot2)
+library(dplyr)
+library(knitr)
+
+# library(shiny)
+# library(DT)
+# library(devtools)
+# library(baseballr) - might need this one to get the data
+# library(DBI)
+# library(RSQLite)
+
+
+sc <- baseballr::statcast_search(start_date = '2022-09-18', end_date = '2022-09-18')
+sc <- data.frame(sc, stringsAsFactors = F)  %>% filter(pitcher == 594798)
+NL_CY <- sc
+
+season1 <- baseballr::statcast_search(start_date = '2022-08-02', end_date = '2022-08-02')
+season2 <- baseballr::statcast_search(start_date = '2022-08-07', end_date = '2022-08-07')
+season3 <- baseballr::statcast_search(start_date = '2022-08-13', end_date = '2022-08-13')
+season4 <- baseballr::statcast_search(start_date = '2022-08-18', end_date = '2022-08-18')
+season5 <- baseballr::statcast_search(start_date = '2022-08-25', end_date = '2022-08-25')
+season6 <- baseballr::statcast_search(start_date = '2022-08-31', end_date = '2022-08-31')
+season7 <- baseballr::statcast_search(start_date = '2022-09-07', end_date = '2022-09-07')
+season8 <- baseballr::statcast_search(start_date = '2022-09-13', end_date = '2022-09-13')
+season9 <- baseballr::statcast_search(start_date = '2022-09-18', end_date = '2022-09-18')
+#season <- baseballr::statcast_search(start_date = '2022-09-24', end_date = '2022-09-24')
+#season <- baseballr::statcast_search(start_date = '2022-09-30', end_date = '2022-09-30')
+#season <- baseballr::statcast_search(start_date = '2022-10-08', end_date = '2022-10-08')
+
+season <- rbind(season1, season2, season3, season4, season5, season6, season7, season8, season9 )
+
+season <- data.frame(season, stringsAsFactors = F)  %>% filter(pitcher == 594798)
+
+colnames(NL_CY)[6] <- "hitters"
+colnames(NL_CY)[8] <- "player_name"
+NL_CY$player_name[NL_CY$player_name == '594798'] <- 'Jacob deGrom'
+
+NL_CY$game_date <- as.Date(NL_CY$game_date, "%Y-%m-%d")
+NL_CY$pitch_type <- factor(NL_CY$pitch_type, levels = c("FF", "SI", "FC", "CS", "CU", "KC", "SL", "CH", "FS"))
+NL_CY$pitch_name <- factor(NL_CY$pitch_name, levels = c("4-Seam Fastball", "Sinker", "Cutter", "Curveball", "Knuckle Curve", "Slider", "Changeup", "Split-Finger"))
+
+colnames(season)[6] <- "hitters"
+season$player_name[season$player_name == '594798'] <- 'Jacob deGrom'
+
+season$game_date <- as.Date(season$game_date, "%Y-%m-%d")
+season$pitch_type <- factor(season$pitch_type, levels = c("FF", "SI", "FC", "CS", "CU", "KC", "SL", "CH", "FS"))
+season$pitch_name <- factor(season$pitch_name, levels = c("4-Seam Fastball", "Sinker", "Cutter", "Curveball", "Knuckle Curve", "Slider", "Changeup", "Split-Finger"))
+
+table <- NL_CY %>%
+      group_by('Pitch' = pitch_name) %>%
+      summarize('No.' = n(),
+                'Max Velo (MPH)' = round(max(release_speed, na.rm = TRUE),1),
+                'Avg. Velo (MPH)' = round(mean(release_speed, na.rm = TRUE),1),
+                'Avg. Spin (RPM)' = round(mean(release_spin_rate, na.rm = TRUE),0),
+                'Strike %' = round(sum(type %in% c("S", "X"))/n(),3)*100,
+                'Whiff %' = round(sum(description %in% c("swinging_strike", "swinging_strike_blocked"))/ sum(description %in% c("swinging_strike", "foul", "bunt_foul_tip", "foul_bunt", "foul_tip", "hit_into_play", "hit_into_play_no_out","hit_into_play_score", "missed_bunt", "swinging_strike_blocked")),3)*100)
+kable(table, caption = 'Pitch Summary')
+
+#pitch location
+plot(ggplot(NL_CY, aes(x = plate_x*-1, y = plate_z, color = pitch_name)) +
+      xlim(-3,3) + ylim(0,5) + labs(color = "", title = "Pitch Location") +
+      geom_rect(aes(xmin = -0.83, xmax = 0.83, ymin = 1.5, ymax = 3.5), alpha = 0, size = 1, color = "black") + geom_segment(aes(x = -0.708, y = 0.15, xend = 0.708, yend = 0.15), size = 1, color = "black") + geom_segment(aes(x = -0.708, y = 0.3, xend = -0.708, yend = 0.15), size = 1, color = "black") + geom_segment(aes(x = -0.708, y = 0.3, xend = 0, yend = 0.5), size = 1, color = "black") + geom_segment(aes(x = 0, y = 0.5, xend = 0.708, yend = 0.3), size = 1, color = "black") + geom_segment(aes(x = 0.708, y = 0.3, xend = 0.708, yend = 0.15), size = 1, color = "black") + geom_point(size = 3, na.rm = TRUE) + theme_bw() + theme(plot.title = element_text(size = 16)) 
+       + theme(legend.position = "bottom", legend.text = element_text(size = 15), axis.title = element_blank()))
+```
+
+Pitch Velocity Over Start
+---
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+#pitch velocity
+   dataFilter <- (NL_CY %>%
+        group_by(pitch_type) %>%
+        mutate(PitchNo = row_number()))
+    plot(ggplot(dataFilter) +
+      geom_line(aes(y = release_speed, x = PitchNo, color = pitch_name), size = 2) + 
+      labs(x = "Pitch Count", y = "Pitch Velocity (MPH)", color = " ", title = "Pitch Velocity") + theme_bw()
+        #+  theme(plot.title = element_text(size = 16, face = "bold", hjust = 0.5), axis.text = element_text(size = 12)) + 
+        + theme(legend.position = "bottom", legend.text = element_text(size = 10)))
+
+
+```
+
+Pitch Movement Plot
+---
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+#pitch movement
+plot(ggplot(NL_CY, aes(x = pfx_x*-12, y = pfx_z*12, color = pitch_name)) +
+       labs(x = "Horizontal Movement (in.)", y = "Vertical Movement (in.)", color = "Pitch Type", title = "Pitch Movement") + 
+       xlim(-30, 30) + ylim(-30, 30) +
+       geom_segment(aes(x = 0, y = -30, xend = 0, yend = 30), size = 1, color = "black") + 
+       geom_segment(aes(x = -30, y = 0, xend = 30, yend = 0), size = 1, color = "black") +
+       geom_point(size = 2, na.rm = TRUE) + theme_bw() )
+
+```
+
+#### Pitch Movement and Release Data
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+table <- NL_CY %>%
+  group_by('Pitch' = pitch_name) %>%
+  summarize('HBreak (in.)' = round(mean(pfx_x*-12, na.rm = TRUE),2),
+            'VBreak (in.)' = round(mean(pfx_z*12, na.rm = TRUE),2),
+            'Extension (ft.)' = round(mean(release_extension, na.rm = TRUE),3))
+kable(table, caption = 'Movement and Release Data By Pitch')
+
+```
+
+
+Spin Rate Bands
+---
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+#Spin Rate Bands
+# TH <- theme(
+#   plot.title = element_text(
+#     #colour = "blue",
+#     size = 18,
+#     hjust = 0.5 #centers it
+#   )
+# )
+
+
+ggplot(NL_CY, aes(as.factor(pitch_name), release_spin_rate, fill=pitch_name)) +
+  geom_boxplot() +
+  coord_flip() +
+  xlab("Pitch Name") +
+  ylab("Spin Rate") +
+  #ggtitle("Jacob deGrom Spin Rate Bands") +
+  theme(legend.position="bottom") +
+  labs(fill = "Pitch Type", title = "Spin Rate Bands")
+
+
+```
+
+#### Spin Rate Values
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+table <- NL_CY %>%
+  group_by('Pitch' = pitch_name) %>%
+  summarize('Least' = quantile(release_spin_rate, probs = c(0), type=1),
+            '25th Percentile' = quantile(release_spin_rate, probs = c(0.25), type=1),
+            'Median' = quantile(release_spin_rate, probs = c(0.5), type=1),
+            '75th Percentile' = quantile(release_spin_rate, probs = c(0.75), type=1),
+            'Most' = quantile(release_spin_rate, probs = c(1), type=1))
+kable(table, caption = 'Spin Rate Percentiles')
+
+```
+
+Pitch Speed Bands
+---
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+#Spin Rate Bands
+# TH <- theme(
+#   plot.title = element_text(
+#     #colour = "blue",
+#     size = 18,
+#     hjust = 0.5 #centers it
+#   )
+# )
+
+
+ggplot(NL_CY, aes(as.factor(pitch_name), release_speed, fill=pitch_name)) +
+  geom_boxplot() +
+  coord_flip() +
+  labs(x = "Pitch Name", y = "Pitch Speed", fill = "Pitch Type", title = 'Pitch Speed Bands') +
+  #ggtitle("Jacob deGrom Pitch Speed Bands") +
+  theme(legend.position="bottom")
+```
+
+#### Pitch Speed Values
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+table <- NL_CY %>%
+  group_by('Pitch' = pitch_name) %>%
+  summarize('Slowest' = quantile(release_speed, probs = c(0), type=1),
+            '25th Percentile' = quantile(release_speed, probs = c(0.25), type=1),
+            'Median' = quantile(release_speed, probs = c(0.5), type=1),
+            '75th Percentile' = quantile(release_speed, probs = c(0.75), type=1),
+            'Fastest' = quantile(release_speed, probs = c(1), type=1))
+kable(table, caption = 'Pitch Speed Percentiles')
+
+```
+
+Release Point Plot
+---
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+#pitch release plot 
+#From Pitcher Perspective
+plot(ggplot(NL_CY, aes(x = release_pos_x*-1, y = release_pos_z, color = pitch_name)) +
+     ylim(2, 7) + xlim(-3, 3) +
+     labs(x = "Pitch Release Side (ft.)", y = "Pitch Release Height (ft.)", color = " ", title = "Pitch Release Point") + 
+       geom_point(size = 3, na.rm = TRUE) +
+       theme_bw())
+       #theme(plot.title = element_text(size = 16, face = "bold", hjust = 0.5), axis.text = element_text(size = 12)) +
+       #theme(legend.position = "bottom", legend.text = element_text(size = 12), axis.title = element_text(size = 14)))
+
+
+```
+
+Fastball VAA Plot
+---
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+#VAA
+
+fastballs <- NL_CY %>% filter(pitch_type == 'FF')
+y0 <- 50
+yf <- 17/12
+
+#top left
+num1 <- 0
+totVAA <- 0
+
+for(i in 1:length(fastballs[,'pitch_type'])) {    
+if(fastballs$plate_x[i] < -0.277 & fastballs$plate_z[i] > 2.83) {
+  vy_f <- (-sqrt(fastballs$vy0[i]^2 - (2 * fastballs$ay[i] * (y0 - yf))))
+  t <- (vy_f - fastballs$vy0[i]) / fastballs$ay[i]
+  vz_f <- fastballs$vz0[i] + (fastballs$az[i] * t)
+  VAA <- -atan(vz_f/vy_f) * (180 / pi)
+  totVAA <- totVAA + VAA
+  num1 <- num1 + 1
+}
+}
+
+VAA1 <- totVAA/num1
+
+#top middle
+num2 <- 0
+totVAA <- 0
+
+for(i in 1:length(fastballs[,'pitch_type'])) {    
+  if(fastballs$plate_x[i] > -0.277 & fastballs$plate_x[i] < 0.277 & fastballs$plate_z[i] > 2.83) {
+    vy_f <- (-sqrt(fastballs$vy0[i]^2 - (2 * fastballs$ay[i] * (y0 - yf))))
+    t <- (vy_f - fastballs$vy0[i]) / fastballs$ay[i]
+    vz_f <- fastballs$vz0[i] + (fastballs$az[i] * t)
+    VAA <- -atan(vz_f/vy_f) * (180 / pi)
+    totVAA <- totVAA + VAA
+    num2 <- num2 + 1
+  }
+}
+
+VAA2 <- totVAA/num2
+
+#top right
+num3 <- 0
+totVAA <- 0
+
+for(i in 1:length(fastballs[,'pitch_type'])) {    
+  if(fastballs$plate_x[i] > 0.277 & fastballs$plate_z[i] > 2.83) {
+    vy_f <- (-sqrt(fastballs$vy0[i]^2 - (2 * fastballs$ay[i] * (y0 - yf))))
+    t <- (vy_f - fastballs$vy0[i]) / fastballs$ay[i]
+    vz_f <- fastballs$vz0[i] + (fastballs$az[i] * t)
+    VAA <- -atan(vz_f/vy_f) * (180 / pi)
+    totVAA <- totVAA + VAA
+    num3 <- num3 + 1
+  }
+}
+
+VAA3 <- totVAA/num3
+
+#middle left
+num4 <- 0
+totVAA <- 0
+
+for(i in 1:length(fastballs[,'pitch_type'])) {    
+  if(fastballs$plate_x[i] < -0.277 & fastballs$plate_z[i] < 2.83 & fastballs$plate_z[i] > 2.167) {
+    vy_f <- (-sqrt(fastballs$vy0[i]^2 - (2 * fastballs$ay[i] * (y0 - yf))))
+    t <- (vy_f - fastballs$vy0[i]) / fastballs$ay[i]
+    vz_f <- fastballs$vz0[i] + (fastballs$az[i] * t)
+    VAA <- -atan(vz_f/vy_f) * (180 / pi)
+    totVAA <- totVAA + VAA
+    num4 <- num4 + 1
+  }
+}
+
+VAA4 <- totVAA/num4
+
+#middle middle
+num5 <- 0
+totVAA <- 0
+
+for(i in 1:length(fastballs[,'pitch_type'])) {    
+  if(fastballs$plate_x[i] > -0.277 & fastballs$plate_x[i] < 0.277 & fastballs$plate_z[i] < 2.83 & fastballs$plate_z[i] > 2.167) {
+    vy_f <- (-sqrt(fastballs$vy0[i]^2 - (2 * fastballs$ay[i] * (y0 - yf))))
+    t <- (vy_f - fastballs$vy0[i]) / fastballs$ay[i]
+    vz_f <- fastballs$vz0[i] + (fastballs$az[i] * t)
+    VAA <- -atan(vz_f/vy_f) * (180 / pi)
+    totVAA <- totVAA + VAA
+    num5 <- num5 + 1
+  }
+}
+
+VAA5 <- totVAA/num5
+
+#middle right
+num6 <- 0
+totVAA <- 0
+
+for(i in 1:length(fastballs[,'pitch_type'])) {    
+  if(fastballs$plate_x[i] > 0.277 & fastballs$plate_z[i] < 2.83 & fastballs$plate_z[i] > 2.167) {
+    vy_f <- (-sqrt(fastballs$vy0[i]^2 - (2 * fastballs$ay[i] * (y0 - yf))))
+    t <- (vy_f - fastballs$vy0[i]) / fastballs$ay[i]
+    vz_f <- fastballs$vz0[i] + (fastballs$az[i] * t)
+    VAA <- -atan(vz_f/vy_f) * (180 / pi)
+    totVAA <- totVAA + VAA
+    num6 <- num6 + 1
+  }
+}
+
+VAA6 <- totVAA/num6
+
+#bottom left
+num7 <- 0
+totVAA <- 0
+
+for(i in 1:length(fastballs[,'pitch_type'])) {    
+  if(fastballs$plate_x[i] < -0.277 & fastballs$plate_z[i] < 2.167) {
+    vy_f <- (-sqrt(fastballs$vy0[i]^2 - (2 * fastballs$ay[i] * (y0 - yf))))
+    t <- (vy_f - fastballs$vy0[i]) / fastballs$ay[i]
+    vz_f <- fastballs$vz0[i] + (fastballs$az[i] * t)
+    VAA <- -atan(vz_f/vy_f) * (180 / pi)
+    totVAA <- totVAA + VAA
+    num7 <- num7 + 1
+  }
+}
+
+VAA7 <- totVAA/num7
+
+#bottom middle
+num8 <- 0
+totVAA <- 0
+
+for(i in 1:length(fastballs[,'pitch_type'])) {    
+  if(fastballs$plate_x[i] > -0.277 & fastballs$plate_x[i] < 0.277 & fastballs$plate_z[i] < 2.167) {
+    vy_f <- (-sqrt(fastballs$vy0[i]^2 - (2 * fastballs$ay[i] * (y0 - yf))))
+    t <- (vy_f - fastballs$vy0[i]) / fastballs$ay[i]
+    vz_f <- fastballs$vz0[i] + (fastballs$az[i] * t)
+    VAA <- -atan(vz_f/vy_f) * (180 / pi)
+    totVAA <- totVAA + VAA
+    num8 <- num8 + 1
+  }
+}
+
+VAA8 <- totVAA/num8
+
+#bottom right
+num9 <- 0
+totVAA <- 0
+
+for(i in 1:length(fastballs[,'pitch_type'])) {    
+  if(fastballs$plate_x[i] > 0.277 & fastballs$plate_z[i] < 2.167) {
+    vy_f <- (-sqrt(fastballs$vy0[i]^2 - (2 * fastballs$ay[i] * (y0 - yf))))
+    t <- (vy_f - fastballs$vy0[i]) / fastballs$ay[i]
+    vz_f <- fastballs$vz0[i] + (fastballs$az[i] * t)
+    VAA <- -atan(vz_f/vy_f) * (180 / pi)
+    totVAA <- totVAA + VAA
+    num9 <- num9 + 1
+  }
+}
+
+VAA9 <- totVAA/num9
+
+
+
+strike_zone <- data.frame(
+  x1 = c(-0.83, -0.83, -0.83, -0.277, -0.277, -0.277, 0.277, 0.277, 0.277),
+  x2 = c(-0.277, -0.277, -0.277, 0.277, 0.277, 0.277, 0.83, 0.83, 0.83),
+  y1 = c(1.5, 2.167, 2.83, 1.5, 2.167, 2.83, 1.5, 2.167, 2.83),
+  y2 = c(2.167, 2.83, 3.5, 2.167, 2.83, 3.5, 2.167, 2.83, 3.5),
+  z = c(VAA7,VAA4,VAA1,VAA8,VAA5,VAA2,VAA9,VAA6,VAA3)
+
+)
+
+ggplot() + 
+  xlim(-0.83, 0.83)+ xlab('') +
+  ylim(1.5, 3.5) + ylab('') +
+  geom_rect(data = strike_zone,
+             aes(xmin = x1, xmax = x2, ymin = y2, ymax = y1, fill = z), color = 'grey20') + 
+  geom_text(data = strike_zone, label = round(VAA1,2), x = -0.55, y=3.25, size=8) +
+  geom_text(data = strike_zone, label = paste(num1, 'N'), x = -0.55, y=3.0, size=6) +
+  geom_text(data = strike_zone, label = round(VAA2,2), x = 0, y=3.25, size=8) +
+  geom_text(data = strike_zone, label = paste(num2, 'N'), x = 0, y=3.0, size=6) +
+  geom_text(data = strike_zone, label = round(VAA3,2), x = 0.55, y=3.25, size=8) +
+  geom_text(data = strike_zone, label = paste(num3, 'N'), x = 0.55, y=3.0, size=6) +
+  geom_text(data = strike_zone, label = round(VAA4,2), x = -0.55, y=2.55, size=8) +
+  geom_text(data = strike_zone, label = paste(num4, 'N'), x = -0.55, y=2.30, size=6) +
+  geom_text(data = strike_zone, label = round(VAA5,2), x = 0, y=2.55, size=8) +
+  geom_text(data = strike_zone, label = paste(num5, 'N'), x = 0, y=2.30, size=6) +
+  geom_text(data = strike_zone, label = round(VAA6,2), x = 0.55, y=2.55, size=8) +
+  geom_text(data = strike_zone, label = paste(num6, 'N'), x = 0.55, y=2.30, size=6) +
+  geom_text(data = strike_zone, label = round(VAA7,2), x = -0.55, y=1.90, size=8) +
+  geom_text(data = strike_zone, label = paste(num7, 'N'), x = -0.55, y=1.65, size=6) +
+  geom_text(data = strike_zone, label = round(VAA8,2), x = 0, y=1.90, size=8) +
+  geom_text(data = strike_zone, label = paste(num8, 'N'), x = 0, y=1.65, size=6) +
+  geom_text(data = strike_zone, label = round(VAA9,2), x = 0.55, y=1.90, size=8) +
+  geom_text(data = strike_zone, label = paste(num9, 'N'), x = 0.55, y=1.65, size=6) +
+  labs(x = "Pitch Offset (ft.)", y = "Pitch Height (ft.)", color = " ", title = "Average Fastball VAA Heat Map", fill='Average VAA') +
+  scale_fill_gradient(low = "red",
+                      high = "chartreuse",
+                      guide = "colorbar")
+
+```
+
+Whiff Plot
+---
+```{r, echo=FALSE, warning=FALSE, fig.height = 6.3, fig.width=7.5, message=FALSE}
+#whiff plot
+#multiplying plate_x by -1 flips from catcher to pitcher perspective
+swinging <- NL_CY
+swinging$description[swinging$description %in% c('swinging_strike', 'swinging_strike_blocked',"missed_bunt") ] <- 'Whiff'
+
+swinging$description[swinging$description %in% c( "foul", "bunt_foul_tip", "foul_bunt", "foul_tip", "hit_into_play", "hit_into_play_no_out","hit_into_play_score")] <- 'Contact'
+
+swinging<-swinging[!(swinging$description %in% c('ball', 'blocked_ball', 'called_strike')),]
+
+ggplot(swinging, aes(x = plate_x*-1, y = plate_z, shape = 'Contact')) +
+      xlim(-3,3) + ylim(0,5) + labs(x = 'Pitch Offset (ft.)', y = 'Pitch Height (ft.)', color = "Pitch Type", title = "Strikezone Whiff Plot", shape = 'Whiff or Contact') +
+      geom_rect(aes(xmin = -0.83, xmax = 0.83, ymin = 1.5, ymax = 3.5), alpha = 0, size = 1, color = "black") +
+       geom_point(aes(shape=description, color=pitch_name),size = 4, na.rm = TRUE) + theme_bw() + theme(legend.text = element_text(size = 10))
+ #+ theme(axis.title = element_text(size = 13)))
+       #theme(legend.position = "bottom", legend.text = element_text(size = 12), axis.title = element_blank())
+
+```
+
+#### Whiff Results
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+swinging <- NL_CY
+swinging$description[swinging$description %in% c('swinging_strike', 'swinging_strike_blocked',"missed_bunt") ] <- 'Whiff'
+
+swinging$description[swinging$description %in% c( "foul", "bunt_foul_tip", "foul_bunt", "foul_tip", "hit_into_play", "hit_into_play_no_out","hit_into_play_score")] <- 'Contact'
+
+swinging<-swinging[!(swinging$description %in% c('ball', 'blocked_ball', 'called_strike')),]
+
+table <- swinging %>%
+  group_by('Pitch' = pitch_name) %>%
+  summarize('Whiffs' = sum(description == 'Whiff'),
+            'Contact' = sum(description == 'Contact'))
+kable(table, caption = 'Whiff Data')
+
+```
+
+Swing Tendencies
+---
+```{r, echo=FALSE, warning=FALSE, fig.height = 6.3, fig.width=7.5, message=FALSE}
+#swing tendency by pitch 
+swinging_or_not <- NL_CY
+swinging_or_not$description[swinging_or_not$description %in% c('ball', 'called_strike', 'blocked_ball') ] <- 'Take'
+
+swinging_or_not$description[swinging_or_not$description %in% c( "foul", "bunt_foul_tip", "foul_bunt", "foul_tip", "hit_into_play", "hit_into_play_no_out","hit_into_play_score", "missed_bunt", 'swinging_strike', 'swinging_strike_blocked')] <- 'Swing'
+
+ggplot(swinging_or_not, aes(x = plate_x*-1, y = plate_z, shape = 'Swing')) +
+      xlim(-3,3) + ylim(0,5) + labs(x = 'Pitch Offset (ft.)', y = 'Pitch Height (ft.)', color = "Pitch Type", title = "Swinging Tendency Chart By Pitch", shape = 'Swing') +
+      geom_rect(aes(xmin = -0.83, xmax = 0.83, ymin = 1.5, ymax = 3.5), alpha = 0, size = 1, color = "black") +
+       geom_point(aes(shape=description, color=pitch_name),size = 4, na.rm = TRUE) + theme_bw() + theme(legend.text = element_text(size = 10))
+       # + theme(plot.title = element_text(size = 16, face = "bold", hjust = 0.5))  
+       #theme(legend.position = "bottom", legend.text = element_text(size = 12), axis.title = element_blank())
+
+
+```
+
+#### Discipline Data
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+swinging_or_not <- NL_CY
+swinging_or_not$description[swinging_or_not$description %in% c('ball', 'called_strike', 'blocked_ball') ] <- 'Take'
+
+swinging_or_not$description[swinging_or_not$description %in% c( "foul", "bunt_foul_tip", "foul_bunt", "foul_tip", "hit_into_play", "hit_into_play_no_out","hit_into_play_score", "missed_bunt", 'swinging_strike', 'swinging_strike_blocked')] <- 'Swing'
+
+table <- swinging_or_not %>%
+  group_by('Pitch' = pitch_name) %>%
+  summarize('Swings' = sum(description == 'Swing'),
+            'Take' = sum(description == 'Take'))
+kable(table, caption = 'Discipline Data')
+
+```
+
+
+Fastball Plate Discipline
+---
+```{r, echo=FALSE, warning=FALSE, fig.height = 6.3, fig.width=7.5, message=FALSE}
+#swing tendency - fastball
+swinging_or_not <- NL_CY
+swinging_or_not$description[swinging_or_not$description %in% c('ball', 'called_strike', 'blocked_ball') ] <- 'Take'
+
+swinging_or_not$description[swinging_or_not$description %in% c( "foul", "bunt_foul_tip", "foul_bunt", "foul_tip", "hit_into_play", "hit_into_play_no_out","hit_into_play_score", "missed_bunt", 'swinging_strike', 'swinging_strike_blocked')] <- 'Swing'
+
+swinging_or_not <- swinging_or_not %>% filter(pitch_type == 'FF')
+
+ggplot(swinging_or_not, aes(x = plate_x*-1, y = plate_z, shape = 'Swing')) +
+      xlim(-3,3) + ylim(0,5) + labs(x = 'Pitch Offset (ft.)', y = 'Pitch Height (ft.)', color = "Pitch Type", title = "Swinging Tendency Chart - Fastballs", shape = 'Swing') +
+      geom_rect(aes(xmin = -0.83, xmax = 0.83, ymin = 1.5, ymax = 3.5), alpha = 0, size = 1, color = "black") +
+       geom_point(aes(shape=description, color=pitch_name),size = 4, na.rm = TRUE) + theme_bw() + theme(legend.text = element_text(size = 10))
+       # + theme(plot.title = element_text(size = 16, face = "bold", hjust = 0.5))  
+       #theme(legend.position = "bottom", legend.text = element_text(size = 12), axis.title = element_blank())
+
+
+```
+
+#### Fastball Discipline Data
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+swinging_or_not <- NL_CY
+swinging_or_not$description[swinging_or_not$description %in% c('ball', 'called_strike', 'blocked_ball') ] <- 'Take'
+
+swinging_or_not$description[swinging_or_not$description %in% c( "foul", "bunt_foul_tip", "foul_bunt", "foul_tip", "hit_into_play", "hit_into_play_no_out","hit_into_play_score", "missed_bunt", 'swinging_strike', 'swinging_strike_blocked')] <- 'Swing'
+
+swinging_or_not <- swinging_or_not %>% filter(pitch_type == 'FF')
+
+table <- swinging_or_not %>%
+  group_by('Pitch' = pitch_name) %>%
+  summarize('Swings' = sum(description == 'Swing'),
+            'Take' = sum(description == 'Take'))
+kable(table, caption = ' Fastball Discipline Data')
+
+```
+
+Fastball Swing Results
+---
+```{r, echo=FALSE, warning=FALSE, fig.height = 6.3, fig.width=7.5, message=FALSE}
+#swing results - fastballs
+swinging <- NL_CY
+swinging$description[swinging$description %in% c('swinging_strike', 'swinging_strike_blocked', "missed_bunt") ] <- 'Whiff'
+
+swinging$description[swinging$description %in% c("hit_into_play", "hit_into_play_no_out","hit_into_play_score")] <- 'In Play'
+
+swinging$description[swinging$description %in% c("foul", "bunt_foul_tip", "foul_bunt", "foul_tip")] <- 'Foul Ball'
+
+swinging<-swinging[!(swinging$description %in% c('ball', 'blocked_ball', 'called_strike')),]
+
+swinging <- swinging %>% filter(pitch_type == 'FF')
+
+ggplot(swinging, aes(x = plate_x*-1, y = plate_z, shape = 'In Play')) +
+      xlim(-3,3) + ylim(0,5) + labs(x = 'Pitch Offset (ft.)', y = 'Pitch Height (ft.)', color = "Pitch Type", title = "Swing Results By Pitch - Fastballs", shape = 'Result') +
+      geom_rect(aes(xmin = -0.83, xmax = 0.83, ymin = 1.5, ymax = 3.5), alpha = 0, size = 1, color = "black") +
+       geom_point(aes(shape=description, color=pitch_name),size = 4, na.rm = TRUE) + theme_bw() + theme(legend.text = element_text(size = 10))
+       # + theme(plot.title = element_text(size = 16, face = "bold", hjust = 0.5))  
+       #theme(legend.position = "bottom", legend.text = element_text(size = 12), axis.title = element_blank())
+
+```
+
+#### Fastball Swing Data
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+swinging <- NL_CY
+swinging$description[swinging$description %in% c('swinging_strike', 'swinging_strike_blocked', "missed_bunt") ] <- 'Whiff'
+
+swinging$description[swinging$description %in% c("hit_into_play", "hit_into_play_no_out","hit_into_play_score")] <- 'In Play'
+
+swinging$description[swinging$description %in% c("foul", "bunt_foul_tip", "foul_bunt", "foul_tip")] <- 'Foul Ball'
+
+swinging<-swinging[!(swinging$description %in% c('ball', 'blocked_ball', 'called_strike')),]
+
+swinging <- swinging %>% filter(pitch_type == 'FF')
+
+table <- swinging %>%
+  group_by('Pitch' = pitch_name) %>%
+  summarize('In Play' = sum(description == 'In Play'),
+            'Whiff' = sum(description == 'Whiff'),
+            'Foul Ball' = sum(description == 'Foul Ball'))
+kable(table, caption = 'Fastball Swing Data')
+
+```
+
+Spin Pitches Plate Discipline
+---
+```{r, echo=FALSE, warning=FALSE, fig.height = 6.3, fig.width=7.5, message=FALSE}
+#swing tendency - spin pitches
+swinging_or_not <- NL_CY
+swinging_or_not$description[swinging_or_not$description %in% c('ball', 'called_strike', 'blocked_ball') ] <- 'Take'
+
+swinging_or_not$description[swinging_or_not$description %in% c( "foul", "bunt_foul_tip", "foul_bunt", "foul_tip", "hit_into_play", "hit_into_play_no_out","hit_into_play_score", "missed_bunt", 'swinging_strike', 'swinging_strike_blocked')] <- 'Swing'
+
+swinging_or_not <- swinging_or_not[!(swinging_or_not$pitch_type %in% c('FF')),]
+
+ggplot(swinging_or_not, aes(x = plate_x*-1, y = plate_z, shape = 'Swing')) +
+      xlim(-3,3) + ylim(0,5) + labs(x = 'Pitch Offset (ft.)', y = 'Pitch Height (ft.)', color = "Pitch Type", title = "Swinging Tendency Chart - Spin Pitches", shape = 'Swing') +
+      geom_rect(aes(xmin = -0.83, xmax = 0.83, ymin = 1.5, ymax = 3.5), alpha = 0, size = 1, color = "black") +
+       geom_point(aes(shape=description, color=pitch_name),size = 4, na.rm = TRUE) + theme_bw() + theme(legend.text = element_text(size = 10))
+       # + theme(plot.title = element_text(size = 16, face = "bold", hjust = 0.5))  
+       #theme(legend.position = "bottom", legend.text = element_text(size = 12), axis.title = element_blank())
+
+
+```
+
+#### Spin Pitches Discipline Data
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+swinging_or_not <- NL_CY
+swinging_or_not$description[swinging_or_not$description %in% c('ball', 'called_strike', 'blocked_ball') ] <- 'Take'
+
+swinging_or_not$description[swinging_or_not$description %in% c( "foul", "bunt_foul_tip", "foul_bunt", "foul_tip", "hit_into_play", "hit_into_play_no_out","hit_into_play_score", "missed_bunt", 'swinging_strike', 'swinging_strike_blocked')] <- 'Swing'
+
+swinging_or_not <- swinging_or_not[!(swinging_or_not$pitch_type %in% c('FF')),]
+
+table <- swinging_or_not %>%
+  group_by('Pitch' = pitch_name) %>%
+  summarize('Swings' = sum(description == 'Swing'),
+            'Take' = sum(description == 'Take'))
+kable(table, caption = 'Spin Pitches Discipline Data')
+
+```
+
+Spin Pitches Swing Results
+---
+```{r, echo=FALSE, warning=FALSE, fig.height = 6.3, fig.width=7.5, message=FALSE}
+#swing results - spin pitches
+swinging <- NL_CY
+swinging$description[swinging$description %in% c('swinging_strike', 'swinging_strike_blocked', "missed_bunt") ] <- 'Whiff'
+
+swinging$description[swinging$description %in% c("hit_into_play", "hit_into_play_no_out","hit_into_play_score")] <- 'In Play'
+
+swinging$description[swinging$description %in% c("foul", "bunt_foul_tip", "foul_bunt", "foul_tip")] <- 'Foul Ball'
+
+swinging<-swinging[!(swinging$description %in% c('ball', 'blocked_ball', 'called_strike')),]
+
+swinging <- swinging[!(swinging$pitch_type %in% c('FF')),]
+
+ggplot(swinging, aes(x = plate_x*-1, y = plate_z)) +
+      xlim(-3,3) + ylim(0,5) + labs(x = 'Pitch Offset (ft.)', y = 'Pitch Height (ft.)', color = "Pitch Type", title = "Swing Results By Pitch - Spin Pitches", shape = 'Result') +
+      geom_rect(aes(xmin = -0.83, xmax = 0.83, ymin = 1.5, ymax = 3.5), alpha = 0, size = 1, color = "black") +
+       geom_point(aes(shape=description, color=pitch_name),size = 4, na.rm = TRUE) + theme_bw() + theme(legend.text = element_text(size = 10))
+       # + theme(plot.title = element_text(size = 16, face = "bold", hjust = 0.5))  
+       #theme(legend.position = "bottom", legend.text = element_text(size = 12), axis.title = element_blank())
+
+```
+
+#### Spin Pitches Swing Data
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+swinging <- NL_CY
+swinging$description[swinging$description %in% c('swinging_strike', 'swinging_strike_blocked', "missed_bunt") ] <- 'Whiff'
+
+swinging$description[swinging$description %in% c("hit_into_play", "hit_into_play_no_out","hit_into_play_score")] <- 'In Play'
+
+swinging$description[swinging$description %in% c("foul", "bunt_foul_tip", "foul_bunt", "foul_tip")] <- 'Foul Ball'
+
+swinging<-swinging[!(swinging$description %in% c('ball', 'blocked_ball', 'called_strike')),]
+
+swinging <- swinging[!(swinging$pitch_type %in% c('FF')),]
+
+table <- swinging %>%
+  group_by('Pitch' = pitch_name) %>%
+  summarize('In Play' = sum(description == 'In Play'),
+            'Whiff' = sum(description == 'Whiff'),
+            'Foul Ball' = sum(description == 'Foul Ball'))
+kable(table, caption = 'Spin Pitches Swing Data')
+
+```
+
+Quality Contact
+---
+```{r, echo=FALSE, warning=FALSE, fig.height = 6.3, fig.width=7.5, message=FALSE}
+#Quality of Contact by pitch
+swinging <- NL_CY
+
+swinging$description[swinging$description %in% c("hit_into_play", "hit_into_play_no_out","hit_into_play_score")] <- 'In Play'
+
+swinging<-swinging[!(swinging$description %in% c('ball', 'blocked_ball', 'called_strike', "foul", "bunt_foul_tip", "foul_bunt", "foul_tip", 'swinging_strike', 'swinging_strike_blocked', "missed_bunt", 'hit_by_pitch')),]
+
+for(i in 1:length(swinging[,'launch_speed'])){ 
+  if (swinging$launch_speed[i] >= 90 & swinging$launch_speed[i] < 98) {
+    swinging$launch_speed[i] <- 'Moderate Contact'
+  }
+
+  if (swinging$launch_speed[i] >= 98) {
+    swinging$launch_speed[i] <- 'Hard Contact'
+  }
+  
+  if (swinging$launch_speed[i] < 90) {
+    swinging$launch_speed[i] <- 'Soft Contact'
+  }
+  
+}
+
+ggplot(swinging, aes(x = plate_x*-1, y = plate_z)) +
+      xlim(-3,3) + ylim(0,5) + labs(x = 'Pitch Offset (ft.)', y = 'Pitch Height (ft.)', color = "Pitch Type", title = "Quality of Contact By Pitch", shape = 'Contact') +
+      geom_rect(aes(xmin = -0.83, xmax = 0.83, ymin = 1.5, ymax = 3.5), alpha = 0, size = 1, color = "black") +
+       geom_point(aes(shape=launch_speed, color=pitch_name),size = 4, na.rm = TRUE) + theme_bw() + theme(legend.text = element_text(size = 10))
+
+```
+
+#### Quality Contact Data
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+swinging <- NL_CY
+
+swinging$description[swinging$description %in% c("hit_into_play", "hit_into_play_no_out","hit_into_play_score")] <- 'In Play'
+
+swinging<-swinging[!(swinging$description %in% c('ball', 'blocked_ball', 'called_strike', "foul", "bunt_foul_tip", "foul_bunt", "foul_tip", 'swinging_strike', 'swinging_strike_blocked', "missed_bunt", 'hit_by_pitch')),]
+
+for(i in 1:length(swinging[,'launch_speed'])){ 
+  if (swinging$launch_speed[i] >= 90 & swinging$launch_speed[i] < 98) {
+    swinging$launch_speed[i] <- 'Moderate Contact'
+  }
+
+  if (swinging$launch_speed[i] >= 98) {
+    swinging$launch_speed[i] <- 'Hard Contact'
+  }
+  
+  if (swinging$launch_speed[i] < 90) {
+    swinging$launch_speed[i] <- 'Soft Contact'
+  }
+  
+}
+
+table <- swinging %>%
+  group_by('Pitch' = pitch_name) %>%
+  summarize('Hard Contact (98 and up)' = sum(launch_speed == 'Hard Contact'),
+            'Moderate Contact (90-97)' = sum(launch_speed == 'Moderate Contact'),
+            'Soft Contact (90 and below)' = sum(launch_speed == 'Soft Contact'))
+kable(table, caption = 'Quality Contact Data')
+
+```
+
+
+\newpage
+
+# Cumulative Report
+
+
+Zone Tendancy Report
+---
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+
+table1 <- season %>%
+      group_by('Pitch' = pitch_name) %>%
+      summarize('Whiff %' = round(sum(description %in% c("swinging_strike", "swinging_strike_blocked"))/ sum(description %in% c("swinging_strike", "foul", "bunt_foul_tip", "foul_bunt", "foul_tip", "hit_into_play", "hit_into_play_no_out","hit_into_play_score", "missed_bunt", "swinging_strike_blocked")),3)*100,
+                
+                'Swing %' = round(sum(description %in% c( "foul", "bunt_foul_tip", "foul_bunt", "foul_tip", "hit_into_play", "hit_into_play_no_out","hit_into_play_score", "missed_bunt", 'swinging_strike', 'swinging_strike_blocked')) / sum(description %in% c('ball', 'called_strike', 'blocked_ball', "foul", "bunt_foul_tip", "foul_bunt", "foul_tip", "hit_into_play", "hit_into_play_no_out","hit_into_play_score", "missed_bunt", 'swinging_strike', 'swinging_strike_blocked')),3) * 100,
+               )
+
+ball <- season %>% filter(zone %in% c('11', '12', '13', '14'))
+
+table2 <- ball %>%
+    group_by('Pitch' = pitch_name) %>% 
+    summarize('O-Swing%' = round(sum(description %in% c( "foul", "bunt_foul_tip", "foul_bunt", "foul_tip", "hit_into_play", "hit_into_play_no_out","hit_into_play_score", "missed_bunt", 'swinging_strike', 'swinging_strike_blocked')) / sum(description %in% c('ball', 'called_strike', 'blocked_ball', "foul", "bunt_foul_tip", "foul_bunt", "foul_tip", "hit_into_play", "hit_into_play_no_out","hit_into_play_score", "missed_bunt", 'swinging_strike', 'swinging_strike_blocked')),3) * 100, )
+
+strike <- season %>% filter(zone %in% c('1', '2', '3', '4', '5', '6', '7', '8', '9'))
+
+table3 <- strike %>%
+    group_by('Pitch' = pitch_name) %>% 
+    summarize('Z-Swing%' = round(sum(description %in% c( "foul", "bunt_foul_tip", "foul_bunt", "foul_tip", "hit_into_play", "hit_into_play_no_out","hit_into_play_score", "missed_bunt", 'swinging_strike', 'swinging_strike_blocked')) / sum(description %in% c('ball', 'called_strike', 'blocked_ball', "foul", "bunt_foul_tip", "foul_bunt", "foul_tip", "hit_into_play", "hit_into_play_no_out","hit_into_play_score", "missed_bunt", 'swinging_strike', 'swinging_strike_blocked')),3) * 100, )
+
+table4 <- ball %>%
+    group_by('Pitch' = pitch_name) %>% 
+    summarize('O-Contact%' = round(sum(description %in% c("hit_into_play", "hit_into_play_no_out","hit_into_play_score","foul", "bunt_foul_tip", "foul_bunt", "foul_tip")) / sum(description %in% c('ball', 'called_strike', 'blocked_ball', "foul", "bunt_foul_tip", "foul_bunt", "foul_tip", "hit_into_play", "hit_into_play_no_out","hit_into_play_score", "missed_bunt", 'swinging_strike', 'swinging_strike_blocked')),3) * 100)
+
+table5 <- strike %>%
+    group_by('Pitch' = pitch_name) %>% 
+    summarize('Z-Contact%' = round(sum(description %in% c("hit_into_play", "hit_into_play_no_out","hit_into_play_score","foul", "bunt_foul_tip", "foul_bunt", "foul_tip")) / sum(description %in% c('ball', 'called_strike', 'blocked_ball', "foul", "bunt_foul_tip", "foul_bunt", "foul_tip", "hit_into_play", "hit_into_play_no_out","hit_into_play_score", "missed_bunt", 'swinging_strike', 'swinging_strike_blocked')),3) * 100)
+
+table6 <- season %>%
+    group_by('Pitch' = pitch_name) %>% 
+    summarize('InPlay%' = round(sum(description %in% c("hit_into_play", "hit_into_play_no_out","hit_into_play_score")) / sum(description %in% c('ball', 'called_strike', 'blocked_ball', "foul", "bunt_foul_tip", "foul_bunt", "foul_tip", "hit_into_play", "hit_into_play_no_out","hit_into_play_score", "missed_bunt", 'swinging_strike', 'swinging_strike_blocked')),3) * 100)
+
+table7 <- season %>%
+    group_by('Pitch' = pitch_name) %>% 
+    summarize('Zone%' = round(sum(zone %in% c('1', '2', '3', '4', '5', '6', '7', '8', '9'))/sum(zone %in% c('1', '2', '3', '4', '5', '6', '7', '8', '9','11', '12', '13', '14')), 3) * 100, 
+              'SwStr%' = round(sum(description %in% c("missed_bunt", 'swinging_strike', 'swinging_strike_blocked')) / sum(description %in% c('ball', 'called_strike', 'blocked_ball', "foul", "bunt_foul_tip", "foul_bunt", "foul_tip", "hit_into_play", "hit_into_play_no_out","hit_into_play_score", "missed_bunt", 'swinging_strike', 'swinging_strike_blocked')),3) * 100)
+              
+table8 <- season %>%
+    group_by('Pitch' = pitch_name) %>% 
+    summarize('Foul%' = round(sum(description %in% c("foul", "bunt_foul_tip", "foul_bunt", "foul_tip"))/ sum(description %in% c('ball', 'called_strike', 'blocked_ball', "foul", "bunt_foul_tip", "foul_bunt", "foul_tip", "hit_into_play", "hit_into_play_no_out","hit_into_play_score", "missed_bunt", 'swinging_strike', 'swinging_strike_blocked')),3) * 100,
+              'InZonePitches' = sum(zone %in% c('1', '2', '3', '4', '5', '6', '7', '8', '9')),
+              'OutZonePitches' = sum(zone %in% c('11', '12', '13', '14')),
+              'TotalPitches' = n())
+  
+
+table <- cbind(table1, table2, table3)
+table <- table[-c(4,6)]
+
+tables <- cbind(table4, table5, table6, table7)
+tables <- tables[-c(1,3,5,7)]
+
+table8 <- table8[-c(1)]
+                
+kable(table, caption = 'Zone Tendancy Report By Pitch (Continued Below)')
+      
+#, format = "latex", booktabs = TRUE) %>%
+#          kable_styling(full_width = T)
+
+kable(tables, caption = 'Continues Below')
+
+kable(table8, caption = '')
+
+```
+
+
+Pitch Movement Plot
+---
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+#pitch movement
+plot(ggplot(season, aes(x = pfx_x*-12, y = pfx_z*12, color = pitch_name)) +
+       labs(x = "Horizontal Movement (in.)", y = "Vertical Movement (in.)", color = "Pitch Type", title = "Pitch Movement") + 
+       xlim(-30, 30) + ylim(-30, 30) +
+       geom_segment(aes(x = 0, y = -30, xend = 0, yend = 30), size = 1, color = "black") + 
+       geom_segment(aes(x = -30, y = 0, xend = 30, yend = 0), size = 1, color = "black") +
+       geom_point(size = 2, na.rm = TRUE) + theme_bw() )
+
+```
+
+#### Pitch Movement and Release Data
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+table <- season %>%
+  group_by('Pitch' = pitch_name) %>%
+  summarize('HBreak (in.)' = round(mean(pfx_x*-12, na.rm = TRUE),2),
+            'VBreak (in.)' = round(mean(pfx_z*12, na.rm = TRUE),2),
+            'Extension (ft.)' = round(mean(release_extension, na.rm = TRUE),3))
+kable(table, caption = 'Movement and Release Data By Pitch')
+
+```
+
+
+Spin Rate Bands
+---
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+#Spin Rate Bands
+# TH <- theme(
+#   plot.title = element_text(
+#     #colour = "blue",
+#     size = 18,
+#     hjust = 0.5 #centers it
+#   )
+# )
+
+
+ggplot(season, aes(as.factor(pitch_name), release_spin_rate, fill=pitch_name)) +
+  geom_boxplot() +
+  coord_flip() +
+  xlab("Pitch Name") +
+  ylab("Spin Rate") +
+  #ggtitle("Jacob deGrom Spin Rate Bands") +
+  theme(legend.position="bottom") +
+  labs(fill = "Pitch Type", title = "Spin Rate Bands")
+
+
+```
+
+#### Spin Rate Values
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+table <- season %>%
+  group_by('Pitch' = pitch_name) %>%
+  summarize('Most' = quantile(release_spin_rate, probs = c(0), type=1),
+            '25th Percentile' = quantile(release_spin_rate, probs = c(0.25), type=1),
+            'Median' = quantile(release_spin_rate, probs = c(0.5), type=1),
+            '75th Percentile' = quantile(release_spin_rate, probs = c(0.75), type=1),
+            'least' = quantile(release_spin_rate, probs = c(1), type=1))
+kable(table, caption = 'Spin Rate Percentiles')
+
+```
+
+Pitch Speed Bands
+---
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+#Spin Rate Bands
+# TH <- theme(
+#   plot.title = element_text(
+#     #colour = "blue",
+#     size = 18,
+#     hjust = 0.5 #centers it
+#   )
+# )
+
+
+ggplot(season, aes(as.factor(pitch_name), release_speed, fill=pitch_name)) +
+  geom_boxplot() +
+  coord_flip() +
+  labs(x = "Pitch Name", y = "Pitch Speed", fill = "Pitch Type", title = 'Pitch Speed Bands') +
+  #ggtitle("Jacob deGrom Pitch Speed Bands") +
+  theme(legend.position="bottom")
+```
+
+#### Pitch Speed Values
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+table <- season %>%
+  group_by('Pitch' = pitch_name) %>%
+  summarize('Slowest' = quantile(release_speed, probs = c(0), type=1),
+            '25th Percentile' = quantile(release_speed, probs = c(0.25), type=1),
+            'Median' = quantile(release_speed, probs = c(0.5), type=1),
+            '75th Percentile' = quantile(release_speed, probs = c(0.75), type=1),
+            'Fastest' = quantile(release_speed, probs = c(1), type=1))
+kable(table, caption = 'Pitch Speed Percentiles')
+
+```
+
+
+Fastball VAA Plot
+---
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+#VAA
+
+fastballs <- season %>% filter(pitch_type == 'FF')
+y0 <- 50
+yf <- 17/12
+
+#top left
+num1 <- 0
+totVAA <- 0
+
+for(i in 1:length(fastballs[,'pitch_type'])) {    
+if(fastballs$plate_x[i] < -0.277 & fastballs$plate_z[i] > 2.83) {
+  vy_f <- (-sqrt(fastballs$vy0[i]^2 - (2 * fastballs$ay[i] * (y0 - yf))))
+  t <- (vy_f - fastballs$vy0[i]) / fastballs$ay[i]
+  vz_f <- fastballs$vz0[i] + (fastballs$az[i] * t)
+  VAA <- -atan(vz_f/vy_f) * (180 / pi)
+  totVAA <- totVAA + VAA
+  num1 <- num1 + 1
+}
+}
+
+VAA1 <- totVAA/num1
+
+#top middle
+num2 <- 0
+totVAA <- 0
+
+for(i in 1:length(fastballs[,'pitch_type'])) {    
+  if(fastballs$plate_x[i] > -0.277 & fastballs$plate_x[i] < 0.277 & fastballs$plate_z[i] > 2.83) {
+    vy_f <- (-sqrt(fastballs$vy0[i]^2 - (2 * fastballs$ay[i] * (y0 - yf))))
+    t <- (vy_f - fastballs$vy0[i]) / fastballs$ay[i]
+    vz_f <- fastballs$vz0[i] + (fastballs$az[i] * t)
+    VAA <- -atan(vz_f/vy_f) * (180 / pi)
+    totVAA <- totVAA + VAA
+    num2 <- num2 + 1
+  }
+}
+
+VAA2 <- totVAA/num2
+
+#top right
+num3 <- 0
+totVAA <- 0
+
+for(i in 1:length(fastballs[,'pitch_type'])) {    
+  if(fastballs$plate_x[i] > 0.277 & fastballs$plate_z[i] > 2.83) {
+    vy_f <- (-sqrt(fastballs$vy0[i]^2 - (2 * fastballs$ay[i] * (y0 - yf))))
+    t <- (vy_f - fastballs$vy0[i]) / fastballs$ay[i]
+    vz_f <- fastballs$vz0[i] + (fastballs$az[i] * t)
+    VAA <- -atan(vz_f/vy_f) * (180 / pi)
+    totVAA <- totVAA + VAA
+    num3 <- num3 + 1
+  }
+}
+
+VAA3 <- totVAA/num3
+
+#middle left
+num4 <- 0
+totVAA <- 0
+
+for(i in 1:length(fastballs[,'pitch_type'])) {    
+  if(fastballs$plate_x[i] < -0.277 & fastballs$plate_z[i] < 2.83 & fastballs$plate_z[i] > 2.167) {
+    vy_f <- (-sqrt(fastballs$vy0[i]^2 - (2 * fastballs$ay[i] * (y0 - yf))))
+    t <- (vy_f - fastballs$vy0[i]) / fastballs$ay[i]
+    vz_f <- fastballs$vz0[i] + (fastballs$az[i] * t)
+    VAA <- -atan(vz_f/vy_f) * (180 / pi)
+    totVAA <- totVAA + VAA
+    num4 <- num4 + 1
+  }
+}
+
+VAA4 <- totVAA/num4
+
+#middle middle
+num5 <- 0
+totVAA <- 0
+
+for(i in 1:length(fastballs[,'pitch_type'])) {    
+  if(fastballs$plate_x[i] > -0.277 & fastballs$plate_x[i] < 0.277 & fastballs$plate_z[i] < 2.83 & fastballs$plate_z[i] > 2.167) {
+    vy_f <- (-sqrt(fastballs$vy0[i]^2 - (2 * fastballs$ay[i] * (y0 - yf))))
+    t <- (vy_f - fastballs$vy0[i]) / fastballs$ay[i]
+    vz_f <- fastballs$vz0[i] + (fastballs$az[i] * t)
+    VAA <- -atan(vz_f/vy_f) * (180 / pi)
+    totVAA <- totVAA + VAA
+    num5 <- num5 + 1
+  }
+}
+
+VAA5 <- totVAA/num5
+
+#middle right
+num6 <- 0
+totVAA <- 0
+
+for(i in 1:length(fastballs[,'pitch_type'])) {    
+  if(fastballs$plate_x[i] > 0.277 & fastballs$plate_z[i] < 2.83 & fastballs$plate_z[i] > 2.167) {
+    vy_f <- (-sqrt(fastballs$vy0[i]^2 - (2 * fastballs$ay[i] * (y0 - yf))))
+    t <- (vy_f - fastballs$vy0[i]) / fastballs$ay[i]
+    vz_f <- fastballs$vz0[i] + (fastballs$az[i] * t)
+    VAA <- -atan(vz_f/vy_f) * (180 / pi)
+    totVAA <- totVAA + VAA
+    num6 <- num6 + 1
+  }
+}
+
+VAA6 <- totVAA/num6
+
+#bottom left
+num7 <- 0
+totVAA <- 0
+
+for(i in 1:length(fastballs[,'pitch_type'])) {    
+  if(fastballs$plate_x[i] < -0.277 & fastballs$plate_z[i] < 2.167) {
+    vy_f <- (-sqrt(fastballs$vy0[i]^2 - (2 * fastballs$ay[i] * (y0 - yf))))
+    t <- (vy_f - fastballs$vy0[i]) / fastballs$ay[i]
+    vz_f <- fastballs$vz0[i] + (fastballs$az[i] * t)
+    VAA <- -atan(vz_f/vy_f) * (180 / pi)
+    totVAA <- totVAA + VAA
+    num7 <- num7 + 1
+  }
+}
+
+VAA7 <- totVAA/num7
+
+#bottom middle
+num8 <- 0
+totVAA <- 0
+
+for(i in 1:length(fastballs[,'pitch_type'])) {    
+  if(fastballs$plate_x[i] > -0.277 & fastballs$plate_x[i] < 0.277 & fastballs$plate_z[i] < 2.167) {
+    vy_f <- (-sqrt(fastballs$vy0[i]^2 - (2 * fastballs$ay[i] * (y0 - yf))))
+    t <- (vy_f - fastballs$vy0[i]) / fastballs$ay[i]
+    vz_f <- fastballs$vz0[i] + (fastballs$az[i] * t)
+    VAA <- -atan(vz_f/vy_f) * (180 / pi)
+    totVAA <- totVAA + VAA
+    num8 <- num8 + 1
+  }
+}
+
+VAA8 <- totVAA/num8
+
+#bottom right
+num9 <- 0
+totVAA <- 0
+
+for(i in 1:length(fastballs[,'pitch_type'])) {    
+  if(fastballs$plate_x[i] > 0.277 & fastballs$plate_z[i] < 2.167) {
+    vy_f <- (-sqrt(fastballs$vy0[i]^2 - (2 * fastballs$ay[i] * (y0 - yf))))
+    t <- (vy_f - fastballs$vy0[i]) / fastballs$ay[i]
+    vz_f <- fastballs$vz0[i] + (fastballs$az[i] * t)
+    VAA <- -atan(vz_f/vy_f) * (180 / pi)
+    totVAA <- totVAA + VAA
+    num9 <- num9 + 1
+  }
+}
+
+VAA9 <- totVAA/num9
+
+
+
+strike_zone <- data.frame(
+  x1 = c(-0.83, -0.83, -0.83, -0.277, -0.277, -0.277, 0.277, 0.277, 0.277),
+  x2 = c(-0.277, -0.277, -0.277, 0.277, 0.277, 0.277, 0.83, 0.83, 0.83),
+  y1 = c(1.5, 2.167, 2.83, 1.5, 2.167, 2.83, 1.5, 2.167, 2.83),
+  y2 = c(2.167, 2.83, 3.5, 2.167, 2.83, 3.5, 2.167, 2.83, 3.5),
+  z = c(VAA7,VAA4,VAA1,VAA8,VAA5,VAA2,VAA9,VAA6,VAA3)
+
+)
+
+ggplot() + 
+  xlim(-0.83, 0.83)+ xlab('') +
+  ylim(1.5, 3.5) + ylab('') +
+  geom_rect(data = strike_zone,
+             aes(xmin = x1, xmax = x2, ymin = y2, ymax = y1, fill = z), color = 'grey20') + 
+  geom_text(data = strike_zone, label = round(VAA1,2), x = -0.55, y=3.25, size=8) +
+  geom_text(data = strike_zone, label = paste(num1, 'N'), x = -0.55, y=3.0, size=6) +
+  geom_text(data = strike_zone, label = round(VAA2,2), x = 0, y=3.25, size=8) +
+  geom_text(data = strike_zone, label = paste(num2, 'N'), x = 0, y=3.0, size=6) +
+  geom_text(data = strike_zone, label = round(VAA3,2), x = 0.55, y=3.25, size=8) +
+  geom_text(data = strike_zone, label = paste(num3, 'N'), x = 0.55, y=3.0, size=6) +
+  geom_text(data = strike_zone, label = round(VAA4,2), x = -0.55, y=2.55, size=8) +
+  geom_text(data = strike_zone, label = paste(num4, 'N'), x = -0.55, y=2.30, size=6) +
+  geom_text(data = strike_zone, label = round(VAA5,2), x = 0, y=2.55, size=8) +
+  geom_text(data = strike_zone, label = paste(num5, 'N'), x = 0, y=2.30, size=6) +
+  geom_text(data = strike_zone, label = round(VAA6,2), x = 0.55, y=2.55, size=8) +
+  geom_text(data = strike_zone, label = paste(num6, 'N'), x = 0.55, y=2.30, size=6) +
+  geom_text(data = strike_zone, label = round(VAA7,2), x = -0.55, y=1.90, size=8) +
+  geom_text(data = strike_zone, label = paste(num7, 'N'), x = -0.55, y=1.65, size=6) +
+  geom_text(data = strike_zone, label = round(VAA8,2), x = 0, y=1.90, size=8) +
+  geom_text(data = strike_zone, label = paste(num8, 'N'), x = 0, y=1.65, size=6) +
+  geom_text(data = strike_zone, label = round(VAA9,2), x = 0.55, y=1.90, size=8) +
+  geom_text(data = strike_zone, label = paste(num9, 'N'), x = 0.55, y=1.65, size=6) +
+  labs(x = "Pitch Offset (ft.)", y = "Pitch Height (ft.)", color = " ", title = "Average Fastball VAA Heat Map", fill='Average VAA') +
+  scale_fill_gradient(low = "red",
+                      high = "chartreuse",
+                      guide = "colorbar")
+
+```
+
+Whiff Plot
+---
+```{r, echo=FALSE, warning=FALSE, fig.height = 6.3, fig.width=7.5, message=FALSE}
+#whiff plot
+#multiplying plate_x by -1 flips from catcher to pitcher perspective
+swinging <- season
+swinging$description[swinging$description %in% c('swinging_strike', 'swinging_strike_blocked',"missed_bunt") ] <- 'Whiff'
+
+swinging$description[swinging$description %in% c( "foul", "bunt_foul_tip", "foul_bunt", "foul_tip", "hit_into_play", "hit_into_play_no_out","hit_into_play_score")] <- 'Contact'
+
+swinging<-swinging[!(swinging$description %in% c('ball', 'blocked_ball', 'called_strike')),]
+
+ggplot(swinging, aes(x = plate_x*-1, y = plate_z, shape = 'Contact')) +
+      xlim(-3,3) + ylim(0,5) + labs(x = 'Pitch Offset (ft.)', y = 'Pitch Height (ft.)', color = "Pitch Type", title = "Strikezone Whiff Plot", shape = 'Whiff or Contact') +
+      geom_rect(aes(xmin = -0.83, xmax = 0.83, ymin = 1.5, ymax = 3.5), alpha = 0, size = 1, color = "black") +
+       geom_point(aes(shape=description, color=pitch_name),size = 4, na.rm = TRUE) + theme_bw() + theme(legend.text = element_text(size = 10))
+ #+ theme(axis.title = element_text(size = 13)))
+       #theme(legend.position = "bottom", legend.text = element_text(size = 12), axis.title = element_blank())
+
+```
+
+#### Whiff Results
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+swinging <- season
+swinging$description[swinging$description %in% c('swinging_strike', 'swinging_strike_blocked',"missed_bunt") ] <- 'Whiff'
+
+swinging$description[swinging$description %in% c( "foul", "bunt_foul_tip", "foul_bunt", "foul_tip", "hit_into_play", "hit_into_play_no_out","hit_into_play_score")] <- 'Contact'
+
+swinging<-swinging[!(swinging$description %in% c('ball', 'blocked_ball', 'called_strike')),]
+
+table <- swinging %>%
+  group_by('Pitch' = pitch_name) %>%
+  summarize('Whiffs' = sum(description == 'Whiff'),
+            'Contact' = sum(description == 'Contact'))
+kable(table, caption = 'Whiff Data')
+
+```
+
+Swing Tendencies
+---
+```{r, echo=FALSE, warning=FALSE, fig.height = 6.3, fig.width=7.5, message=FALSE}
+#swing tendency by pitch 
+swinging_or_not <- season
+swinging_or_not$description[swinging_or_not$description %in% c('ball', 'called_strike', 'blocked_ball') ] <- 'Take'
+
+swinging_or_not$description[swinging_or_not$description %in% c( "foul", "bunt_foul_tip", "foul_bunt", "foul_tip", "hit_into_play", "hit_into_play_no_out","hit_into_play_score", "missed_bunt", 'swinging_strike', 'swinging_strike_blocked')] <- 'Swing'
+
+ggplot(swinging_or_not, aes(x = plate_x*-1, y = plate_z, shape = 'Swing')) +
+      xlim(-3,3) + ylim(0,5) + labs(x = 'Pitch Offset (ft.)', y = 'Pitch Height (ft.)', color = "Pitch Type", title = "Swinging Tendency Chart By Pitch", shape = 'Swing') +
+      geom_rect(aes(xmin = -0.83, xmax = 0.83, ymin = 1.5, ymax = 3.5), alpha = 0, size = 1, color = "black") +
+       geom_point(aes(shape=description, color=pitch_name),size = 4, na.rm = TRUE) + theme_bw() + theme(legend.text = element_text(size = 10))
+       # + theme(plot.title = element_text(size = 16, face = "bold", hjust = 0.5))  
+       #theme(legend.position = "bottom", legend.text = element_text(size = 12), axis.title = element_blank())
+
+
+```
+
+#### Discipline Data
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+swinging_or_not <- season
+swinging_or_not$description[swinging_or_not$description %in% c('ball', 'called_strike', 'blocked_ball') ] <- 'Take'
+
+swinging_or_not$description[swinging_or_not$description %in% c( "foul", "bunt_foul_tip", "foul_bunt", "foul_tip", "hit_into_play", "hit_into_play_no_out","hit_into_play_score", "missed_bunt", 'swinging_strike', 'swinging_strike_blocked')] <- 'Swing'
+
+table <- swinging_or_not %>%
+  group_by('Pitch' = pitch_name) %>%
+  summarize('Swings' = sum(description == 'Swing'),
+            'Take' = sum(description == 'Take'))
+kable(table, caption = 'Discipline Data')
+
+```
+
+
+Fastball Plate Discipline
+---
+```{r, echo=FALSE, warning=FALSE, fig.height = 6.3, fig.width=7.5, message=FALSE}
+#swing tendency - fastball
+swinging_or_not <- season
+swinging_or_not$description[swinging_or_not$description %in% c('ball', 'called_strike', 'blocked_ball') ] <- 'Take'
+
+swinging_or_not$description[swinging_or_not$description %in% c( "foul", "bunt_foul_tip", "foul_bunt", "foul_tip", "hit_into_play", "hit_into_play_no_out","hit_into_play_score", "missed_bunt", 'swinging_strike', 'swinging_strike_blocked')] <- 'Swing'
+
+swinging_or_not <- swinging_or_not %>% filter(pitch_type == 'FF')
+
+ggplot(swinging_or_not, aes(x = plate_x*-1, y = plate_z, shape = 'Swing')) +
+      xlim(-3,3) + ylim(0,5) + labs(x = 'Pitch Offset (ft.)', y = 'Pitch Height (ft.)', color = "Pitch Type", title = "Swinging Tendency Chart - Fastballs", shape = 'Swing') +
+      geom_rect(aes(xmin = -0.83, xmax = 0.83, ymin = 1.5, ymax = 3.5), alpha = 0, size = 1, color = "black") +
+       geom_point(aes(shape=description, color=pitch_name),size = 4, na.rm = TRUE) + theme_bw() + theme(legend.text = element_text(size = 10))
+       # + theme(plot.title = element_text(size = 16, face = "bold", hjust = 0.5))  
+       #theme(legend.position = "bottom", legend.text = element_text(size = 12), axis.title = element_blank())
+
+
+```
+
+#### Fastball Discipline Data
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+swinging_or_not <- season
+swinging_or_not$description[swinging_or_not$description %in% c('ball', 'called_strike', 'blocked_ball') ] <- 'Take'
+
+swinging_or_not$description[swinging_or_not$description %in% c( "foul", "bunt_foul_tip", "foul_bunt", "foul_tip", "hit_into_play", "hit_into_play_no_out","hit_into_play_score", "missed_bunt", 'swinging_strike', 'swinging_strike_blocked')] <- 'Swing'
+
+swinging_or_not <- swinging_or_not %>% filter(pitch_type == 'FF')
+
+table <- swinging_or_not %>%
+  group_by('Pitch' = pitch_name) %>%
+  summarize('Swings' = sum(description == 'Swing'),
+            'Take' = sum(description == 'Take'))
+kable(table, caption = ' Fastball Discipline Data')
+
+```
+
+Fastball Swing Results
+---
+```{r, echo=FALSE, warning=FALSE, fig.height = 6.3, fig.width=7.5, message=FALSE}
+#swing results - fastballs
+swinging <- season
+swinging$description[swinging$description %in% c('swinging_strike', 'swinging_strike_blocked', "missed_bunt") ] <- 'Whiff'
+
+swinging$description[swinging$description %in% c("hit_into_play", "hit_into_play_no_out","hit_into_play_score")] <- 'In Play'
+
+swinging$description[swinging$description %in% c("foul", "bunt_foul_tip", "foul_bunt", "foul_tip")] <- 'Foul Ball'
+
+swinging<-swinging[!(swinging$description %in% c('ball', 'blocked_ball', 'called_strike')),]
+
+swinging <- swinging %>% filter(pitch_type == 'FF')
+
+ggplot(swinging, aes(x = plate_x*-1, y = plate_z, shape = 'In Play')) +
+      xlim(-3,3) + ylim(0,5) + labs(x = 'Pitch Offset (ft.)', y = 'Pitch Height (ft.)', color = "Pitch Type", title = "Swing Results By Pitch - Fastballs", shape = 'Result') +
+      geom_rect(aes(xmin = -0.83, xmax = 0.83, ymin = 1.5, ymax = 3.5), alpha = 0, size = 1, color = "black") +
+       geom_point(aes(shape=description, color=pitch_name),size = 4, na.rm = TRUE) + theme_bw() + theme(legend.text = element_text(size = 10))
+       # + theme(plot.title = element_text(size = 16, face = "bold", hjust = 0.5))  
+       #theme(legend.position = "bottom", legend.text = element_text(size = 12), axis.title = element_blank())
+
+```
+
+#### Fastball Swing Data
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+swinging <- season
+swinging$description[swinging$description %in% c('swinging_strike', 'swinging_strike_blocked', "missed_bunt") ] <- 'Whiff'
+
+swinging$description[swinging$description %in% c("hit_into_play", "hit_into_play_no_out","hit_into_play_score")] <- 'In Play'
+
+swinging$description[swinging$description %in% c("foul", "bunt_foul_tip", "foul_bunt", "foul_tip")] <- 'Foul Ball'
+
+swinging<-swinging[!(swinging$description %in% c('ball', 'blocked_ball', 'called_strike')),]
+
+swinging <- swinging %>% filter(pitch_type == 'FF')
+
+table <- swinging %>%
+  group_by('Pitch' = pitch_name) %>%
+  summarize('In Play' = sum(description == 'In Play'),
+            'Whiff' = sum(description == 'Whiff'),
+            'Foul Ball' = sum(description == 'Foul Ball'))
+kable(table, caption = 'Fastball Swing Data')
+
+```
+
+Spin Pitches Plate Discipline
+---
+```{r, echo=FALSE, warning=FALSE, fig.height = 6.3, fig.width=7.5, message=FALSE}
+#swing tendency - spin pitches
+swinging_or_not <- season
+swinging_or_not$description[swinging_or_not$description %in% c('ball', 'called_strike', 'blocked_ball') ] <- 'Take'
+
+swinging_or_not$description[swinging_or_not$description %in% c( "foul", "bunt_foul_tip", "foul_bunt", "foul_tip", "hit_into_play", "hit_into_play_no_out","hit_into_play_score", "missed_bunt", 'swinging_strike', 'swinging_strike_blocked')] <- 'Swing'
+
+swinging_or_not <- swinging_or_not[!(swinging_or_not$pitch_type %in% c('FF')),]
+
+ggplot(swinging_or_not, aes(x = plate_x*-1, y = plate_z, shape = 'Swing')) +
+      xlim(-3,3) + ylim(0,5) + labs(x = 'Pitch Offset (ft.)', y = 'Pitch Height (ft.)', color = "Pitch Type", title = "Swinging Tendency Chart - Spin Pitches", shape = 'Swing') +
+      geom_rect(aes(xmin = -0.83, xmax = 0.83, ymin = 1.5, ymax = 3.5), alpha = 0, size = 1, color = "black") +
+       geom_point(aes(shape=description, color=pitch_name),size = 4, na.rm = TRUE) + theme_bw() + theme(legend.text = element_text(size = 10))
+       # + theme(plot.title = element_text(size = 16, face = "bold", hjust = 0.5))  
+       #theme(legend.position = "bottom", legend.text = element_text(size = 12), axis.title = element_blank())
+
+
+```
+
+#### Spin Pitches Discipline Data
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+swinging_or_not <- season
+swinging_or_not$description[swinging_or_not$description %in% c('ball', 'called_strike', 'blocked_ball') ] <- 'Take'
+
+swinging_or_not$description[swinging_or_not$description %in% c( "foul", "bunt_foul_tip", "foul_bunt", "foul_tip", "hit_into_play", "hit_into_play_no_out","hit_into_play_score", "missed_bunt", 'swinging_strike', 'swinging_strike_blocked')] <- 'Swing'
+
+swinging_or_not <- swinging_or_not[!(swinging_or_not$pitch_type %in% c('FF')),]
+
+table <- swinging_or_not %>%
+  group_by('Pitch' = pitch_name) %>%
+  summarize('Swings' = sum(description == 'Swing'),
+            'Take' = sum(description == 'Take'))
+kable(table, caption = 'Spin Pitches Discipline Data')
+
+```
+
+Spin Pitches Swing Results
+---
+```{r, echo=FALSE, warning=FALSE, fig.height = 6.3, fig.width=7.5, message=FALSE}
+#swing results - spin pitches
+swinging <- season
+swinging$description[swinging$description %in% c('swinging_strike', 'swinging_strike_blocked', "missed_bunt") ] <- 'Whiff'
+
+swinging$description[swinging$description %in% c("hit_into_play", "hit_into_play_no_out","hit_into_play_score")] <- 'In Play'
+
+swinging$description[swinging$description %in% c("foul", "bunt_foul_tip", "foul_bunt", "foul_tip")] <- 'Foul Ball'
+
+swinging<-swinging[!(swinging$description %in% c('ball', 'blocked_ball', 'called_strike')),]
+
+swinging <- swinging[!(swinging$pitch_type %in% c('FF')),]
+
+ggplot(swinging, aes(x = plate_x*-1, y = plate_z)) +
+      xlim(-3,3) + ylim(0,5) + labs(x = 'Pitch Offset (ft.)', y = 'Pitch Height (ft.)', color = "Pitch Type", title = "Swing Results By Pitch - Spin Pitches", shape = 'Result') +
+      geom_rect(aes(xmin = -0.83, xmax = 0.83, ymin = 1.5, ymax = 3.5), alpha = 0, size = 1, color = "black") +
+       geom_point(aes(shape=description, color=pitch_name),size = 4, na.rm = TRUE) + theme_bw() + theme(legend.text = element_text(size = 10))
+       # + theme(plot.title = element_text(size = 16, face = "bold", hjust = 0.5))  
+       #theme(legend.position = "bottom", legend.text = element_text(size = 12), axis.title = element_blank())
+
+```
+
+#### Spin Pitches Swing Data
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+swinging <- season
+swinging$description[swinging$description %in% c('swinging_strike', 'swinging_strike_blocked', "missed_bunt") ] <- 'Whiff'
+
+swinging$description[swinging$description %in% c("hit_into_play", "hit_into_play_no_out","hit_into_play_score")] <- 'In Play'
+
+swinging$description[swinging$description %in% c("foul", "bunt_foul_tip", "foul_bunt", "foul_tip")] <- 'Foul Ball'
+
+swinging<-swinging[!(swinging$description %in% c('ball', 'blocked_ball', 'called_strike')),]
+
+swinging <- swinging[!(swinging$pitch_type %in% c('FF')),]
+
+table <- swinging %>%
+  group_by('Pitch' = pitch_name) %>%
+  summarize('In Play' = sum(description == 'In Play'),
+            'Whiff' = sum(description == 'Whiff'),
+            'Foul Ball' = sum(description == 'Foul Ball'))
+kable(table, caption = 'Spin Pitches Swing Data')
+
+```
+
+Quality Contact
+---
+```{r, echo=FALSE, warning=FALSE, fig.height = 6.3, fig.width=7.5, message=FALSE}
+#Quality of Contact by pitch
+swinging <- season
+
+swinging$description[swinging$description %in% c("hit_into_play", "hit_into_play_no_out","hit_into_play_score")] <- 'In Play'
+
+swinging<-swinging[!(swinging$description %in% c('ball', 'blocked_ball', 'called_strike', "foul", "bunt_foul_tip", "foul_bunt", "foul_tip", 'swinging_strike', 'swinging_strike_blocked', "missed_bunt")),]
+
+for(i in 1:length(swinging[,'launch_speed'])){ 
+  if (swinging$launch_speed[i] >= 90 & swinging$launch_speed[i] < 98) {
+    swinging$launch_speed[i] <- 'Moderate Contact'
+  }
+
+  if (swinging$launch_speed[i] >= 98) {
+    swinging$launch_speed[i] <- 'Hard Contact'
+  }
+  
+  if (swinging$launch_speed[i] < 90) {
+    swinging$launch_speed[i] <- 'Soft Contact'
+  }
+  
+}
+
+ggplot(swinging, aes(x = plate_x*-1, y = plate_z)) +
+      xlim(-3,3) + ylim(0,5) + labs(x = 'Pitch Offset (ft.)', y = 'Pitch Height (ft.)', color = "Pitch Type", title = "Quality of Contact By Pitch", shape = 'Contact') +
+      geom_rect(aes(xmin = -0.83, xmax = 0.83, ymin = 1.5, ymax = 3.5), alpha = 0, size = 1, color = "black") +
+       geom_point(aes(shape=launch_speed, color=pitch_name),size = 4, na.rm = TRUE) + theme_bw() + theme(legend.text = element_text(size = 10))
+       # + theme(plot.title = element_text(size = 16, face = "bold", hjust = 0.5))  
+       #theme(legend.position = "bottom", legend.text = element_text(size = 12), axis.title = element_blank())
+
+```
+
+#### Quality Contact Data
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+swinging <- season
+
+swinging$description[swinging$description %in% c("hit_into_play", "hit_into_play_no_out","hit_into_play_score")] <- 'In Play'
+
+swinging<-swinging[!(swinging$description %in% c('ball', 'blocked_ball', 'called_strike', "foul", "bunt_foul_tip", "foul_bunt", "foul_tip", 'swinging_strike', 'swinging_strike_blocked', "missed_bunt")),]
+
+for(i in 1:length(swinging[,'launch_speed'])){ 
+  if (swinging$launch_speed[i] >= 90 & swinging$launch_speed[i] < 98) {
+    swinging$launch_speed[i] <- 'Moderate Contact'
+  }
+
+  if (swinging$launch_speed[i] >= 98) {
+    swinging$launch_speed[i] <- 'Hard Contact'
+  }
+  
+  if (swinging$launch_speed[i] < 90) {
+    swinging$launch_speed[i] <- 'Soft Contact'
+  }
+  
+}
+
+table <- swinging %>%
+  group_by('Pitch' = pitch_name) %>%
+  summarize('Hard Contact (98 and up)' = sum(launch_speed == 'Hard Contact'),
+            'Moderate Contact (90-97)' = sum(launch_speed == 'Moderate Contact'),
+            'Soft Contact (90 and below)' = sum(launch_speed == 'Soft Contact'))
+kable(table, caption = 'Quality Contact Data')
+
+```
